@@ -15,7 +15,7 @@
     },
     "apps/journal": {
       "name": "@atlastodo/journal-app",
-      "version": "0.1.0-rc.1",
+      "version": "0.1.0",
       "dependencies": {
         "@atlastodo/client-core": "0.1.11-rc.8",
         "@atlastodo/journal-core": "workspace:*",
@@ -55,7 +55,7 @@
     },
     "packages/journal-core": {
       "name": "@atlastodo/journal-core",
-      "version": "0.1.0-rc.1",
+      "version": "0.1.0",
       "dependencies": {
         "@atlastodo/client-core": "0.1.11-rc.8",
       },

@@ -77,10 +77,6 @@ in
   };
 
   # --- Scripts (developer entry points) --------------------------------------
-  # Bump the version across every manifest in lockstep; then commit `chore(release): vX.Y.Z` and
-  # tag `vX.Y.Z`.
-  scripts."version:bump".exec = ''bash "$DEVENV_ROOT/scripts/bump-version.sh" "$@"'';
-
   # `web:dev`: the web app on the Expo web dev server, pointed at EXPO_PUBLIC_API_URL.
   scripts."web:dev".exec = requireServer + ''
     set -euo pipefail
@@ -99,13 +95,6 @@ in
     set -euo pipefail
     cd "$DEVENV_ROOT/apps/journal" && bun run export:web "$@"
   '';
-  # The web app as the release's atlas-journal-web-X.Y.Z.tar.gz (+ .sha256) in dist-web/.
-  scripts."web:release-tarball".exec = ''
-    set -euo pipefail
-    cd "$DEVENV_ROOT"
-    scripts/web-release-tarball.sh "$@"
-  '';
-
   # Named test:all -- a script called "test" collides with the shell builtin.
   scripts."test:all".exec = ''
     set -euo pipefail
