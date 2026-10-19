@@ -26,7 +26,7 @@ if [ -z "${ATLAS_SERVER_BIN:-}" ] || [ -z "${ATLAS_CLI:-}" ]; then
   [ -d "$CORE/crates/atlas-server" ] || { echo "!! No core checkout at $CORE (set ATLAS_CORE_DIR)" >&2; exit 1; }
   echo ">> Building atlas-server and atlas in $CORE"
   (cd "$CORE" && devenv shell -- cargo build -q -p atlas-server -p atlas-cli)
-  target="$(cd "$CORE" && devenv shell -- cargo metadata --format-version 1 --no-deps 2>/dev/null | jq -r .target_directory)"
+  target="$(cd "$CORE" && devenv shell -- cargo metadata --format-version 1 --no-deps 2>/dev/null | grep "^{" | jq -r .target_directory)"
   ATLAS_SERVER_BIN="${ATLAS_SERVER_BIN:-$target/debug/atlas-server}"
   ATLAS_CLI="${ATLAS_CLI:-$target/debug/atlas}"
 fi
