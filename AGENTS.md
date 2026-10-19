@@ -16,13 +16,13 @@ A test harness for Atlas core, not a product: Atlas Journal exists only to prove
 
 - All dev commands (`web:dev`, `web:export`, `test:all`, `e2e:cli`, `lint`, `fmt`, `vectors:sync`) are devenv scripts in `devenv.nix` — run them inside `devenv shell` (or `devenv shell -- <script>`). The root `package.json` has **no** scripts. (The full suite is `test:all`, not `test`, which collides with the shell builtin.)
 - Bun is the package manager (`bun.lock` committed; CI installs with `--frozen-lockfile`); Node 26 is the runtime. Bun is pinned to **1.4.2** in devenv (the nixpkgs of `devenv.lock`) and `BUN_VERSION` in `.github/workflows/*.yml` — bump them together.
-- The root `typescript` devDependency stays on 6.0 on purpose: typescript-eslint supports TypeScript < 6.1, and ESLint runs from the root. The workspaces typecheck with their own TypeScript.
+- TypeScript is 7 (the native compiler) everywhere: the root and both workspaces. Its npm package has no JS compiler API, which is why the linter is oxlint, not ESLint with typescript-eslint.
 - A server for development: in the core checkout, `devenv up` and `ATLAS_APPS=todo,journal cargo run -p atlas-server`; `EXPO_PUBLIC_API_URL` defaults to `http://localhost:8080`.
 
 ## Verification
 
 - `test:all` = vitest in `packages/journal-core` (under Bun: `bunx --bun vitest run`) → jest-expo in `apps/journal` (must run under real Node: `bun run test`).
-- `lint` = `tsc --noEmit` for both workspaces + `eslint .` + `prettier --check .` + `scripts/third-party-licenses.mjs --check` (the licences of the packages the web build bundles, against an allow-list mirroring core's).
+- `lint` = `tsc --noEmit` for both workspaces + `oxlint .` (`.oxlintrc.json`: the typescript-eslint `recommended` rules and react-hooks `rules-of-hooks` (error) and `exhaustive-deps` (warning)) + `prettier --check .` + `scripts/third-party-licenses.mjs --check` (the licences of the packages the web build bundles, against an allow-list mirroring core's).
 - `web:export` (or CI's export step) must pass.
 - `e2e:cli` (`scripts/e2e-cli.sh`) = a throwaway database, core's `atlas-server` with `ATLAS_APPS=todo,journal`, and the `atlas` CLI: `packages/journal-core/e2e` proves an entry the CLI adds shows up in the app's store and the reverse (edits and trash too), and that an Atlas Todo account gets its journal key on its first journal sign-in. `E2E_WEB=1` also exports the web app, serves it from that server and drives it in headless Chromium (`scripts/e2e-web.mjs`: sign-up, writing, search, a token made in Settings, the CLI both ways, reload). Binaries are built from `ATLAS_CORE_DIR` (default `../atlas`) or given as `ATLAS_SERVER_BIN`/`ATLAS_CLI`; Postgres from `E2E_DATABASE_URL` (default the devenv one on 5432). CI's `End to end (server + CLI)` job runs the same suites against the pinned core release's image and CLI binary.
 

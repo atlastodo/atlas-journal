@@ -27,7 +27,7 @@ Everything runs in the devenv shell (`devenv shell`, or `devenv shell -- <script
 devenv shell
 bun install
 test:all           # journal-core (vitest) and the app (jest-expo)
-lint               # typecheck, ESLint, Prettier, licences
+lint               # typecheck, oxlint, Prettier, licences
 web:export         # the web build must export
 e2e:cli            # journal-core and the atlas CLI against a real core server
 E2E_WEB=1 e2e:cli  # also the web app, served by that server, in headless Chromium
