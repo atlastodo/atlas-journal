@@ -78,24 +78,10 @@ in
     bunx eslint .
     bunx prettier --check .
     node scripts/third-party-licenses.mjs --check
-    # nix/bun.nix must match bun.lock, or the flake's web-dist build fails offline.
-    if command -v nix >/dev/null; then
-      fresh="$(mktemp)"
-      nix run --inputs-from . bun2nix -- -c ../ -o "$fresh"
-      cmp -s "$fresh" nix/bun.nix || { rm -f "$fresh"; echo "nix/bun.nix is stale: run nix:bun-lock" >&2; exit 1; }
-      rm -f "$fresh"
-    fi
   '';
   scripts.fmt.exec = ''
     cd "$DEVENV_ROOT"
     bunx prettier --write .
-  '';
-  # Regenerate nix/bun.nix (the flake's npm dependency set) from bun.lock. Run after every
-  # bun.lock change; `lint` checks it.
-  scripts."nix:bun-lock".exec = ''
-    set -euo pipefail
-    cd "$DEVENV_ROOT"
-    nix run --inputs-from . bun2nix -- -c ../ -o nix/bun.nix
   '';
   # Refresh test-vectors/journal_cli_golden.json from a core checkout (default ../atlas).
   scripts."vectors:sync".exec = ''

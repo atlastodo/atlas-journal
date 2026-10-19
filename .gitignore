@@ -12,9 +12,6 @@ devenv.local.yaml
 # Node / Bun / frontend
 node_modules/
 dist/
-# nix build outputs
-result
-result-*
 *.tsbuildinfo
 
 # Env / secrets
