@@ -21,11 +21,11 @@
     "test:e2e": "vitest run --config vitest.e2e.config.ts"
   },
   "dependencies": {
-    "@atlastodo/client-core": "0.1.11-rc.7"
+    "@atlastodo/client-core": "0.1.11-rc.8"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
     "typescript": "~7.0.2",
-    "vitest": "^5.0.3"
+    "vitest": "^5.0.5"
   }
 }
