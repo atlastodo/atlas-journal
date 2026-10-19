@@ -2,7 +2,7 @@
   "expo": {
     "name": "Atlas Journal",
     "slug": "atlas-journal",
-    "version": "0.1.0",
+    "version": "0.1.0-rc.1",
     "orientation": "default",
     "icon": "./assets/icon.png",
     "scheme": "atlasjournal",
@@ -27,7 +27,7 @@
     },
     "android": {
       "package": "dev.sejder.atlasjournal",
-      "versionCode": 10099,
+      "versionCode": 10001,
       "adaptiveIcon": {
         "backgroundColor": "#B45309",
         "foregroundImage": "./assets/android-icon-foreground.png",
