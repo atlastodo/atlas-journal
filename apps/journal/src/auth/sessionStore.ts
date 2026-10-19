@@ -1,40 +1,120 @@
-import * as SecureStore from "expo-secure-store";
 import type { TokenStore } from "@atlastodo/client-core";
 import type { JournalSession } from "@atlastodo/journal-core";
+import { openSessionKeys, sealSessionKeys, type SealedKeys } from "./webKeyStore";
 
 /**
- * Session persistence on a phone: the whole session, journal keys included, in the OS keychain
- * (Android Keystore, iOS Keychain) through expo-secure-store. No plaintext fallback: a failed read
- * is "signed out", a failed write fails the sign-in. The web build resolves `sessionStore.web.ts`.
+ * Session persistence in localStorage.
+ *
+ * Tokens in localStorage are readable by any script on the origin, an accepted tradeoff shared
+ * with Atlas Todo: refresh-token reuse detection, a CSP and the 15-minute access TTL contain it.
+ * The journal keys are stored only wrapped (`webKeyStore.ts`), or not at all (the session then
+ * asks for the password after a reload).
  */
 
 const KEY = "atlas-journal.session";
+const REFRESH_LOCK = "atlas-journal.session.refresh";
 
-export async function readSession(): Promise<JournalSession | null> {
+type StoredSession = Omit<JournalSession, "journalKey" | "journalPrivateKey"> & {
+  sealedKeys?: SealedKeys;
+};
+
+function readRaw(): string | null {
   try {
-    const raw = await SecureStore.getItemAsync(KEY);
-    return raw ? (JSON.parse(raw) as JournalSession) : null;
+    return globalThis.localStorage?.getItem(KEY) ?? null;
   } catch {
     return null;
   }
 }
 
-export async function writeSession(session: JournalSession): Promise<void> {
-  await SecureStore.setItemAsync(KEY, JSON.stringify(session));
+function parse(raw: string | null): StoredSession | null {
+  try {
+    return raw ? (JSON.parse(raw) as StoredSession) : null;
+  } catch {
+    return null;
+  }
 }
 
-export async function dropSession(): Promise<void> {
-  await SecureStore.deleteItemAsync(KEY);
+async function toStored(session: JournalSession): Promise<StoredSession> {
+  const { journalKey, journalPrivateKey, ...rest } = session;
+  if (!journalKey || !journalPrivateKey) return rest;
+  const sealed = await sealSessionKeys({ journalKey, journalPrivateKey }, session.user.id);
+  return sealed ? { ...rest, sealedKeys: sealed } : rest;
 }
 
-/** One client per process: nothing to lock against. */
-export const withRefreshLock: TokenStore["withRefreshLock"] = undefined;
+async function fromStored(stored: StoredSession): Promise<JournalSession> {
+  const { sealedKeys, ...rest } = stored;
+  if (!sealedKeys) return rest;
+  const keys = await openSessionKeys(sealedKeys, stored.user.id);
+  return keys ? { ...rest, ...keys } : rest;
+}
 
+/** Writes land in call order (each waits for its wrap). */
+let writes: Promise<unknown> = Promise.resolve();
+function enqueue(write: () => Promise<void>): Promise<void> {
+  const next = writes.then(write);
+  writes = next.catch(() => {});
+  return next;
+}
+
+export async function readSession(): Promise<JournalSession | null> {
+  const stored = parse(readRaw());
+  if (!stored) return null;
+  try {
+    return await fromStored(stored);
+  } catch {
+    return null;
+  }
+}
+
+export function writeSession(session: JournalSession): Promise<void> {
+  return enqueue(async () => {
+    globalThis.localStorage?.setItem(KEY, JSON.stringify(await toStored(session)));
+  });
+}
+
+export function dropSession(): Promise<void> {
+  return enqueue(async () => {
+    globalThis.localStorage?.removeItem(KEY);
+  });
+}
+
+function webLocks(): LockManager | null {
+  const locks = (globalThis.navigator as { locks?: LockManager } | undefined)?.locks;
+  return typeof locks?.request === "function" ? locks : null;
+}
+
+/**
+ * Tabs share the session but a refresh token is single-use, so a rotation runs under an
+ * origin-wide lock: one tab rotates, the others adopt the stored pair (see `TokenStore`).
+ */
+export const withRefreshLock: TokenStore["withRefreshLock"] = <T>(fn: () => Promise<T>) => {
+  const locks = webLocks();
+  return locks ? (locks.request(REFRESH_LOCK, () => fn()) as Promise<T>) : fn();
+};
+
+/** Without Web Locks tabs rotate unserialized: ask the server for its short reuse grace. */
 export function refreshGrace(): boolean {
-  return false;
+  return webLocks() === null;
 }
 
-/** A phone has no sibling tabs writing the session. */
-export function subscribeSession(_onChange: (session: JournalSession | null) => void): () => void {
-  return () => {};
+/** Follow the session other tabs write (a rotation, a sign-in, a sign-out). Returns the unsubscribe. */
+export function subscribeSession(onChange: (session: JournalSession | null) => void): () => void {
+  const target = globalThis as Partial<Pick<Window, "addEventListener" | "removeEventListener">>;
+  if (typeof target.addEventListener !== "function") return () => {};
+  let active = true;
+  let deliveries: Promise<void> = Promise.resolve();
+  const handler = (event: Event) => {
+    const { key, newValue } = event as StorageEvent;
+    if (key !== null && key !== KEY) return;
+    const stored = parse(key === null ? readRaw() : newValue);
+    deliveries = deliveries.then(async () => {
+      const session = stored ? await fromStored(stored).catch(() => null) : null;
+      if (active) onChange(session);
+    });
+  };
+  target.addEventListener("storage", handler);
+  return () => {
+    active = false;
+    target.removeEventListener?.("storage", handler);
+  };
 }

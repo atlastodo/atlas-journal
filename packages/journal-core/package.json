@@ -1,6 +1,6 @@
 {
   "name": "@atlastodo/journal-core",
-  "version": "0.1.0-rc.1",
+  "version": "0.1.0",
   "private": true,
   "description": "Atlas Journal's platform-free core: the entry rules (at parity with the atlas CLI), the entry store over client-core, opening the journal app key and the sync engine",
   "license": "AGPL-3.0-only",
@@ -21,7 +21,7 @@
     "test:e2e": "vitest run --config vitest.e2e.config.ts"
   },
   "dependencies": {
-    "@atlastodo/client-core": "0.1.11-rc.8"
+    "@atlastodo/client-core": "0.1.11-rc.9"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",

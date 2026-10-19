@@ -1,16 +1,14 @@
 #!/usr/bin/env node
-// The third-party code Atlas Journal ships, and its licences.
+// The licences of the third-party code the web build bundles, against an allow-list.
 //
 // Every package reachable through `dependencies` (and installed peer and optional dependencies)
-// from the workspace packages that end up in a build: the app and packages/journal-core. Dev
-// dependencies (build tools, tests) are not shipped or listed. The Atlas core packages
+// from the workspace packages that end up in the web build: the app and packages/journal-core.
+// Dev dependencies (build tools, tests) are not checked. The Atlas core packages
 // (@atlastodo/client-core from npm, and this repository's @atlastodo/journal-core) are Atlas's own
-// code under the same licence, so they are walked for their dependencies but not listed. The
-// server's and the CLI's notices (Rust crates) ship with the core repository's releases.
+// code under the same licence, so they are walked for their dependencies but not checked.
 //
 // Usage:
 //   node scripts/third-party-licenses.mjs --check          # fail on a licence outside ALLOW
-//   node scripts/third-party-licenses.mjs --notices FILE   # write the notices file
 //
 // Run `bun install` first. `--check` mirrors the core repository's allow-list (its deny.toml plus
 // the licences only JS packages use); a new licence fails it for a human to review.
@@ -113,69 +111,19 @@ function jsPackages() {
     .sort((a, b) => a.name.localeCompare(b.name) || a.version.localeCompare(b.version));
 }
 
-/** The licence and notice files a package ships, in a stable order. */
-function licenseTexts(dir) {
-  let files;
-  try {
-    files = fs.readdirSync(dir);
-  } catch {
-    return [];
-  }
-  return files
-    .filter((f) => /^(licen[cs]e|copying|notice)([-_.].*)?$/i.test(f))
-    .filter((f) => fs.statSync(path.join(dir, f)).isFile())
-    .sort()
-    .map((f) => fs.readFileSync(path.join(dir, f), "utf8").trim());
-}
-
-function writeNotices(file) {
-  const out = [
-    "Atlas Journal third-party notices",
-    "",
-    "Atlas Journal is licensed under the GNU Affero General Public License v3.0 only. It includes the",
-    "third-party software below, each under its own licence. Packages with identical licence texts",
-    "share one copy of the text.",
-    "",
-  ];
-  const section = (title, pkgs) => {
-    // Group packages by their exact licence text, so the many identical texts appear once.
-    const groups = new Map();
-    for (const p of pkgs) {
-      const texts = licenseTexts(p.dir);
-      const key = texts.length
-        ? texts.join("\n\n")
-        : `(No licence file is included; the package declares: ${p.license})`;
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(`${p.name} ${p.version} (${p.license})`);
-    }
-    out.push("=".repeat(78), title, "=".repeat(78), "");
-    for (const [text, names] of groups) {
-      out.push(...names, "", text, "", "-".repeat(78), "");
-    }
-  };
-  section("JavaScript packages (web, Android and desktop apps)", jsPackages());
-  fs.writeFileSync(file, out.join("\n"));
-  console.log(`Wrote ${file} (${(fs.statSync(file).size / 1024).toFixed(0)} KiB)`);
-}
-
 if (import.meta.main ?? process.argv[1] === import.meta.filename) {
-  const args = process.argv.slice(2);
-  if (args.includes("--check")) {
-    const bad = jsPackages().filter((p) => !allowed(p.license));
-    for (const p of bad) console.error(`${p.name}@${p.version}: ${p.license}`);
-    if (bad.length) {
-      console.error(
-        `\n${bad.length} shipped JS package(s) with a licence outside the allow-list in scripts/third-party-licenses.mjs. ` +
-          "Review each; add a licence to ALLOW only if it is compatible with AGPL-3.0-only.",
-      );
-      process.exit(1);
-    }
-    console.log("Every shipped JS package has an allowed licence.");
-  }
-  const at = args.indexOf("--notices");
-  if (at >= 0) writeNotices(args[at + 1]);
-  if (!args.includes("--check") && at < 0) {
-    console.error("usage: third-party-licenses.mjs [--check] [--notices FILE]");
+  if (!process.argv.includes("--check")) {
+    console.error("usage: third-party-licenses.mjs --check");
     process.exit(2);
   }
+  const bad = jsPackages().filter((p) => !allowed(p.license));
+  for (const p of bad) console.error(`${p.name}@${p.version}: ${p.license}`);
+  if (bad.length) {
+    console.error(
+      `\n${bad.length} bundled JS package(s) with a licence outside the allow-list in scripts/third-party-licenses.mjs. ` +
+        "Review each; add a licence to ALLOW only if it is compatible with AGPL-3.0-only.",
+    );
+    process.exit(1);
+  }
+  console.log("Every bundled JS package has an allowed licence.");
 }
