@@ -23,19 +23,7 @@ result-*
 !.env.example
 *.local
 
-# Android (signing keystores never belong in the repo)
-.android/
-*.jks
-*.keystore
-local.properties
-*.apk
-*.aab
-apps/journal/android/
-apps/journal/ios/
 apps/journal/.expo/
-# The local Expo modules' Gradle output from a native build.
-apps/journal/modules/*/android/build/
-apps/journal/modules/*/android/.gradle/
 
 # OS / editor
 .DS_Store

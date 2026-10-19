@@ -9,8 +9,6 @@ export default defineConfig(
       "**/node_modules/**",
       "**/dist/**",
       "**/.expo/**",
-      "apps/journal/android/**",
-      "apps/journal/ios/**",
       ".claude/**",
       ".devenv/**",
       // The jest cache CI keeps inside the checkout.
