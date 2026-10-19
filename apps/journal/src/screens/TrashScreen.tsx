@@ -11,7 +11,7 @@ export function TrashScreen({ onBack }: { onBack: () => void }) {
   const { entries, version, kick } = useJournal();
   const trashed = useMemo(
     () => entries.trashed(),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
     [entries, version],
   );
   return (

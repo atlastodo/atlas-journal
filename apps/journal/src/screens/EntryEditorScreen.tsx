@@ -45,7 +45,7 @@ export function EntryEditorScreen({
   const existing = useMemo(
     () => (id ? entries.get(id) : null),
     // Read once per store change; the form keeps its own state after that.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
     [entries, id, version],
   );
   const today = dayOf(now());
@@ -64,7 +64,7 @@ export function EntryEditorScreen({
         .filter((t) => !tags.some((x) => x.toLowerCase() === t.toLowerCase()))
         .filter((t) => !tagDraft || t.toLowerCase().startsWith(tagDraft.trim().toLowerCase()))
         .slice(0, 6),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
     [entries, version, tags, tagDraft],
   );
 

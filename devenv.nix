@@ -69,13 +69,13 @@ in
   # other. Needs a core checkout (ATLAS_CORE_DIR, default ../atlas) and a Postgres; see
   # scripts/e2e-cli.sh.
   scripts."e2e:cli".exec = ''bash "$DEVENV_ROOT/scripts/e2e-cli.sh" "$@"'';
-  # Typecheck every workspace, ESLint, `prettier --check` and the shipped licences.
+  # Typecheck every workspace, oxlint (`.oxlintrc.json`), `prettier --check` and the shipped licences.
   scripts.lint.exec = ''
     set -euo pipefail
     cd "$DEVENV_ROOT"
     (cd packages/journal-core && bun run typecheck)
     (cd apps/journal && bun run typecheck)
-    bunx eslint .
+    bunx oxlint .
     bunx prettier --check .
     node scripts/third-party-licenses.mjs --check
   '';
