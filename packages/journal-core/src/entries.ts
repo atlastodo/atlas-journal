@@ -20,12 +20,8 @@ import { queryEntries, type JournalQuery } from "./query";
 /** The Atlas Journal app id: the `x-atlas-sync-apps` scope and the app key's name. */
 export const JOURNAL_APP = "journal";
 
-/**
- * The `journal.entry` kind. client-core 0.1.11-rc.7 types `EntityKind` as todo's kinds only,
- * though its store, sync and field policy take any kind (an unlisted kind encrypts every field,
- * which is journal's manifest). The cast lives here alone until core lists the journal kinds.
- */
-export const JOURNAL_ENTRY = "journal.entry" as string as EntityKind;
+/** The `journal.entry` kind (`manifests/journal.json` in core). */
+export const JOURNAL_ENTRY: EntityKind = "journal.entry";
 
 /** An entry, and whether any of its fields is ciphertext this device cannot open yet. */
 export interface EntryView extends JournalEntry {
