@@ -1,4 +1,3 @@
-import "../lib/polyfillCrypto";
 import "../lib/argon2id";
 import {
   createContext,
@@ -28,7 +27,6 @@ import {
 } from "@atlastodo/journal-core";
 import { deleteDatabase } from "../data/persistence";
 import { detectDeviceName } from "../lib/deviceName";
-import { getInstallKey } from "../lib/installKey";
 import { loadServerUrl, setServerUrlOverride } from "./serverUrl";
 import {
   dropSession,
@@ -197,10 +195,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = useCallback(
     async (email: string, password: string) => {
       const client = requireClient();
-      const installKey = await getInstallKey();
       const signed = await signInFlow(client, email, password, {
         deviceName: detectDeviceName(),
-        installKey,
       });
       await writeSession(signed.session);
       commit(signed.session);
@@ -211,11 +207,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = useCallback(
     async (email: string, password: string, displayName?: string) => {
       const client = requireClient();
-      const installKey = await getInstallKey();
       const signed = await signUpFlow(
         client,
         { email, password, displayName },
-        { deviceName: detectDeviceName(), installKey },
+        { deviceName: detectDeviceName() },
       );
       await writeSession(signed.session);
       setRecoveryPhrase(signed.recoveryPhrase);

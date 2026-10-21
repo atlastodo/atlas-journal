@@ -34,7 +34,7 @@ export function EntriesScreen({
   const all = useMemo(
     () => entries.list(),
     // `version` bumps on every store change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
     [entries, version],
   );
   const tags = useMemo(() => tagCounts(all).slice(0, TOP_TAGS), [all]);

@@ -2,7 +2,5 @@
 
 # Lockfiles and generated files
 bun.lock
-nix/bun.nix
-RELEASE_NOTES.md
 # Copied verbatim from the core repository (scripts/sync-vectors.mjs).
 test-vectors/

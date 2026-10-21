@@ -1,8 +1,7 @@
 import { base64ToBytes, bytesToBase64 } from "@atlastodo/client-core";
 
 /**
- * Storage for the journal keys a web session keeps across reloads (used only by
- * `sessionStore.web.ts`; phones use the OS keychain).
+ * Storage for the journal keys a session keeps across reloads (used only by `sessionStore.ts`).
  *
  * The keys are AES-GCM-wrapped under a non-extractable WebCrypto key kept in IndexedDB, bound to
  * the user id as associated data. That keeps the plain keys out of localStorage, but it is not
