@@ -83,6 +83,10 @@ in
     cd "$DEVENV_ROOT"
     bunx prettier --write .
   '';
+  # Refresh everything Dependabot cannot update (the devenv lock, the Bun pins, the whole bun.lock,
+  # the Expo SDK packages, the core pin and its vectors): scripts/update-deps.sh, which
+  # .github/workflows/deps-refresh.yml runs weekly.
+  scripts."deps:update".exec = ''bash "$DEVENV_ROOT/scripts/update-deps.sh" "$@"'';
   # Refresh test-vectors/journal_cli_golden.json from a core checkout (default ../atlas).
   scripts."vectors:sync".exec = ''
     node "$DEVENV_ROOT/scripts/sync-vectors.mjs" "''${1:-$DEVENV_ROOT/../atlas}" "''${2:-origin/dev}"
@@ -93,7 +97,7 @@ in
       export PATH="$DEVENV_PROFILE/bin:$PATH"
     fi
     echo "Atlas Journal dev shell -- node $(node --version), bun $(bun --version)"
-    echo "Scripts: web:dev, test:all, e2e:cli, lint, fmt (the server is in atlastodo/atlas)"
+    echo "Scripts: web:dev, test:all, e2e:cli, lint, fmt, deps:update (the server is in atlastodo/atlas)"
   '';
 
   enterTest = ''
