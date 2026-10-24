@@ -15,7 +15,7 @@ A test harness for Atlas core, not a product: Atlas Journal exists only to prove
 ## Dev environment
 
 - All dev commands (`web:dev`, `web:export`, `test:all`, `e2e:cli`, `lint`, `fmt`, `vectors:sync`) are devenv scripts in `devenv.nix` — run them inside `devenv shell` (or `devenv shell -- <script>`). The root `package.json` has **no** scripts. (The full suite is `test:all`, not `test`, which collides with the shell builtin.)
-- Bun is the package manager (`bun.lock` committed; CI installs with `--frozen-lockfile`); Node 26 is the runtime. Bun is pinned to **1.4.2** in devenv (the nixpkgs of `devenv.lock`) and `BUN_VERSION` in `.github/workflows/*.yml`, in lockstep: `deps:update` moves the workflow pins to the Bun that nixpkgs ships.
+- Bun is the package manager (`bun.lock` committed; CI installs with `--frozen-lockfile`); Node 26 is the runtime. Bun is pinned to **1.4.2** in devenv (the nixpkgs of `devenv.lock`: `nixos-unstable`, the channel the other atlastodo flakes use) and `BUN_VERSION` in `.github/workflows/*.yml`, in lockstep: `deps:update` moves the workflow pins to the Bun that nixpkgs ships.
 - TypeScript is 7 (the native compiler) everywhere: the root and both workspaces. Its npm package has no JS compiler API, which is why the linter is oxlint, not ESLint with typescript-eslint.
 - A server for development: in the core checkout, `devenv up` and `ATLAS_APPS=todo,journal cargo run -p atlas-server`; `EXPO_PUBLIC_API_URL` defaults to `http://localhost:8080`.
 
