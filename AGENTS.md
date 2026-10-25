@@ -4,6 +4,7 @@
 
 - Before planning work on a bug, ask questions until the bug is properly understood (symptoms, reproduction, expected vs actual).
 - Also ask questions about the proposed solution before implementing — don't assume intent.
+- Never mention Claude, Claude Code or any other AI in commits, pull requests, tags or release notes: no `Co-Authored-By` trailers, session links or "Generated with" footers.
 
 ## What this is
 
@@ -35,6 +36,6 @@ A test harness for Atlas core, not a product: Atlas Journal exists only to prove
 
 ## CI
 
-- Conventional Commits; a fix closing an issue carries `Fixes #N` in the commit body. Work lands on `dev`; `main` takes only PRs from `dev` (`pr-base.yml`). Never add AI attribution to commits.
+- Conventional Commits; a fix closing an issue carries `Fixes #N` in the commit body. Work lands on `dev`; `main` takes only PRs from `dev` (`pr-base.yml`).
 - `ci.yml`: `Lint`, `Test (journal-core)`, `Test (app)` (jest + the web export), `End to end (server + CLI)`, `Audit (JS)` (continue-on-error), chosen by changed paths; a manual run runs everything, the weekly schedule only the audit. `bun audit` reports only the known unfixable `braces` and `node-forge` advisories; fixable ones go in `overrides`, never an ignore list.
 - Nothing is held back on purpose. Dependabot (`.github/dependabot.yml`): weekly version updates for Actions and Bun, grouped minor/patch, targeting `dev`, after a 3-day `cooldown` (security updates never wait). Everything else (`devenv.lock`, the Bun pins, the whole `bun.lock` with transitives and the `overrides`, the Expo SDK's packages via `expo install --fix`, the core pin and its vectors) is `deps:update` (`scripts/update-deps.sh`), which `deps-refresh.yml` runs weekly and opens as one PR from `chore/deps-refresh`. A new Expo SDK major is a migration, flagged as an issue. `overrides` are ranges, never exact pins.
