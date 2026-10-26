@@ -1,7 +1,6 @@
 # yaml-language-server: $schema=https://devenv.sh/devenv.schema.json
 inputs:
   # The nixpkgs channel the other atlastodo flakes (and their devenvs) build from. Its locked
-  # revision (devenv.lock) pins Node 26 and Bun 1.4.2: bump it together with BUN_VERSION in
-  # .github/workflows/*.yml.
+  # revision (devenv.lock) pins Node 26 and Bun 1.4.2: .bun-version (CI) follows it.
   nixpkgs:
     url: github:NixOS/nixpkgs/nixos-unstable
