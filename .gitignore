@@ -28,3 +28,6 @@ apps/journal/.expo/
 .idea/
 .vscode/
 .claude/
+
+# Rust
+/target/

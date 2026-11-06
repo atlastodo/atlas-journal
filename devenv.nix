@@ -21,9 +21,11 @@ in
   #
   #   - Node + Bun (apps/journal: the Expo web app; packages/journal-core: the platform-free
   #     journal logic)
+  #   - Rust (crates/: atlas-journal-rules and the atlas-journal CLI, on core's atlas-client)
   #
-  # The sync server (Rust + PostgreSQL), the `atlas` CLI and the core packages are in the core
-  # repository, https://github.com/atlastodo/atlas; this app installs the core packages from npm.
+  # The sync server (Rust + PostgreSQL) and the core packages are in the core repository,
+  # https://github.com/atlastodo/atlas; this app installs the core packages from npm and builds
+  # on core's atlas-client crate by git tag.
   # ---------------------------------------------------------------------------
 
   languages.javascript = {
@@ -34,10 +36,15 @@ in
     bun.enable = true;
   };
 
+  # The atlas-journal CLI (crates/): nixpkgs' Rust here, rust-toolchain.toml's in CI and the release
+  # builds (it follows core's, whose atlas-client crate the CLI builds on).
+  languages.rust.enable = true;
+
   packages = with pkgs; [
     git
     curl
     jq
+    cargo-nextest
     # psql, for the throwaway database of scripts/e2e-cli.sh.
     postgresql
   ];
@@ -60,19 +67,23 @@ in
   scripts."test:all".exec = ''
     set -euo pipefail
     cd "$DEVENV_ROOT"
+    cargo nextest run --workspace
     # `--bun` runs vitest under Bun's runtime, matching CI.
     (cd packages/journal-core && bunx --bun vitest run)
     # jest-expo must run under real Node (`bun run` only starts it).
     (cd apps/journal && bun run test)
   '';
-  # The app and the atlas CLI against a real server: entries written by either show up in the
-  # other. Needs a core checkout (ATLAS_CORE_DIR, default ../atlas) and a Postgres; see
-  # scripts/e2e-cli.sh.
+  # The app and the atlas-journal CLI against a real server: entries written by either show up in
+  # the other. Needs a core checkout (ATLAS_CORE_DIR, default ../atlas) for the server and a
+  # Postgres; see scripts/e2e-cli.sh.
   scripts."e2e:cli".exec = ''bash "$DEVENV_ROOT/scripts/e2e-cli.sh" "$@"'';
-  # Typecheck every workspace, oxlint (`.oxlintrc.json`), `prettier --check` and the shipped licences.
+  # rustfmt and clippy (as CI's `Lint (Rust)`), every workspace's typecheck, oxlint
+  # (`.oxlintrc.json`), `prettier --check` and the shipped licences.
   scripts.lint.exec = ''
     set -euo pipefail
     cd "$DEVENV_ROOT"
+    cargo fmt --all -- --check
+    cargo clippy --workspace --all-targets --no-deps -- -D warnings
     (cd packages/journal-core && bun run typecheck)
     (cd apps/journal && bun run typecheck)
     bunx oxlint .
@@ -81,22 +92,19 @@ in
   '';
   scripts.fmt.exec = ''
     cd "$DEVENV_ROOT"
+    cargo fmt --all
     bunx prettier --write .
   '';
-  # Refresh everything Dependabot cannot update (the devenv lock, the Bun pins, the whole bun.lock,
-  # the Expo SDK packages, the core pin and its vectors): scripts/update-deps.sh, which
+  # Refresh everything Dependabot cannot update (the devenv lock, the Bun pins, the whole bun.lock
+  # and Cargo.lock, the Expo SDK packages, the core pin): scripts/update-deps.sh, which
   # .github/workflows/deps-refresh.yml runs weekly.
   scripts."deps:update".exec = ''bash "$DEVENV_ROOT/scripts/update-deps.sh" "$@"'';
-  # Refresh test-vectors/journal_cli_golden.json from a core checkout (default ../atlas).
-  scripts."vectors:sync".exec = ''
-    node "$DEVENV_ROOT/scripts/sync-vectors.mjs" "''${1:-$DEVENV_ROOT/../atlas}" "''${2:-origin/dev}"
-  '';
 
   enterShell = ''
     if [ -n "''${DEVENV_PROFILE:-}" ]; then
       export PATH="$DEVENV_PROFILE/bin:$PATH"
     fi
-    echo "Atlas Journal dev shell -- node $(node --version), bun $(bun --version)"
+    echo "Atlas Journal dev shell -- rust $(rustc --version 2>/dev/null | cut -d' ' -f2), node $(node --version), bun $(bun --version)"
     echo "Scripts: web:dev, test:all, e2e:cli, lint, fmt, deps:update (the server is in atlastodo/atlas)"
   '';
 

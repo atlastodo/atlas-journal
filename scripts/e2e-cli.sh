@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 #
-# Atlas Journal against the `atlas` CLI on a real server (packages/journal-core/e2e): a throwaway
-# Postgres database, the core repository's atlas-server offering the journal
-# (ATLAS_APPS=todo,journal) on a free port, and its atlas CLI binary. An entry the CLI adds must
-# show up in the app's store and the reverse, edits and the trash included.
+# Atlas Journal against the atlas-journal CLI on a real server: a throwaway Postgres database, the
+# core repository's atlas-server offering the journal (ATLAS_APPS=todo,journal) on a free port, and
+# this repository's atlas-journal binary. The CLI's own end-to-end tests
+# (crates/atlas-journal-cli/tests/e2e.rs) run against it, then packages/journal-core/e2e: an entry
+# the CLI adds must show up in the app's store and the reverse, edits and the trash included.
 #
 # Environment:
-#   ATLAS_CORE_DIR     a checkout of github.com/atlastodo/atlas (default ../atlas); its
-#                      binaries are built there with `cargo build` (in its devenv) unless
-#   ATLAS_SERVER_BIN   and
-#   ATLAS_CLI          point at prebuilt atlas-server and atlas binaries.
+#   ATLAS_SERVER_BIN   a prebuilt atlas-server binary; without it, it is built in
+#   ATLAS_CORE_DIR     a checkout of github.com/atlastodo/atlas (default ../atlas) with
+#                      `cargo build` (in its devenv).
+#   ATLAS_CLI          a prebuilt atlas-journal binary (default: `cargo build` here).
 #   E2E_DATABASE_URL   an admin URL of a Postgres to create the throwaway database on (default
 #                      postgres://atlas:atlas@localhost:5432/postgres). The database is dropped
 #                      afterwards.
@@ -22,13 +23,17 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 CORE="${ATLAS_CORE_DIR:-$ROOT/../atlas}"
 ADMIN_URL="${E2E_DATABASE_URL:-postgres://atlas:atlas@localhost:5432/postgres}"
 
-if [ -z "${ATLAS_SERVER_BIN:-}" ] || [ -z "${ATLAS_CLI:-}" ]; then
+if [ -z "${ATLAS_SERVER_BIN:-}" ]; then
   [ -d "$CORE/crates/atlas-server" ] || { echo "!! No core checkout at $CORE (set ATLAS_CORE_DIR)" >&2; exit 1; }
-  echo ">> Building atlas-server and atlas in $CORE"
-  (cd "$CORE" && devenv shell -- cargo build -q -p atlas-server -p atlas-cli)
+  echo ">> Building atlas-server in $CORE"
+  (cd "$CORE" && devenv shell -- cargo build -q -p atlas-server)
   target="$(cd "$CORE" && devenv shell -- cargo metadata --format-version 1 --no-deps 2>/dev/null | grep "^{" | jq -r .target_directory)"
-  ATLAS_SERVER_BIN="${ATLAS_SERVER_BIN:-$target/debug/atlas-server}"
-  ATLAS_CLI="${ATLAS_CLI:-$target/debug/atlas}"
+  ATLAS_SERVER_BIN="$target/debug/atlas-server"
+fi
+if [ -z "${ATLAS_CLI:-}" ]; then
+  echo ">> Building atlas-journal"
+  (cd "$ROOT" && cargo build -q -p atlas-journal-cli)
+  ATLAS_CLI="$(cd "$ROOT" && cargo metadata --format-version 1 --no-deps | jq -r .target_directory)/debug/atlas-journal"
 fi
 
 db="atlas_journal_e2e_$$"
@@ -71,6 +76,8 @@ for _ in $(seq 1 60); do
 done
 curl -sf "http://127.0.0.1:$port/discovery" | jq -c '{version, apps: [.apps[].id], capabilities}'
 
+echo ">> The atlas-journal CLI's end-to-end tests"
+(cd "$ROOT" && ATLAS_E2E_SERVER="http://127.0.0.1:$port" cargo nextest run -p atlas-journal-cli --test e2e --run-ignored all)
 (
   cd "$ROOT/packages/journal-core"
   ATLAS_E2E_URL="http://127.0.0.1:$port" ATLAS_CLI="$ATLAS_CLI" bunx --bun vitest run --config vitest.e2e.config.ts "$@"

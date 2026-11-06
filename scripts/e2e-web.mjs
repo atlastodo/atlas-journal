@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// The web app in a real browser against a real server, and the atlas CLI beside it
+// The web app in a real browser against a real server, and the atlas-journal CLI beside it
 // (scripts/e2e-cli.sh runs it with E2E_WEB=1): sign up, the recovery phrase, writing, editing,
 // searching and trashing an entry, a journal API token made in Settings that the CLI then uses
 // to read the app's entry and add one that appears in the open app, and a reload that keeps the
 // session and the journal.
 //
 // Environment: BASE_URL (the page; a server serving the web export as STATIC_DIR), CHROMIUM (a
-// Chromium binary), ATLAS_CLI (the atlas binary), SCREENSHOT_DIR (optional, keeps screenshots).
+// Chromium binary), ATLAS_CLI (the atlas-journal binary), SCREENSHOT_DIR (optional, keeps screenshots).
 import { execFileSync } from "node:child_process";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
@@ -116,9 +116,7 @@ try {
   // The app pushes in the background; give it a few polls.
   let mine;
   for (let i = 0; i < 15 && !mine; i++) {
-    mine = atlas(token, "journal", "entries", "list").find(
-      (e) => e.title === "Harbour walk at dawn",
-    );
+    mine = atlas(token, "entries", "list").find((e) => e.title === "Harbour walk at dawn");
     if (!mine) await page.waitForTimeout(2_000);
   }
   check(
@@ -128,7 +126,6 @@ try {
 
   const added = atlas(
     token,
-    "journal",
     "entries",
     "add",
     "--title",
@@ -158,13 +155,13 @@ try {
   await page.getByRole("button", { name: "Open entry Harbour walk at dawn" }).waitFor();
   let afterTrash = [];
   for (let i = 0; i < 15; i++) {
-    afterTrash = atlas(token, "journal", "entries", "list");
+    afterTrash = atlas(token, "entries", "list");
     if (!afterTrash.some((e) => e.id === added.id)) break;
     await page.waitForTimeout(2_000);
   }
   check(!afterTrash.some((e) => e.id === added.id), "the CLI leaves out what the app trashed");
   check(
-    atlas(token, "journal", "entries", "get", added.id).deleted_at !== null,
+    atlas(token, "entries", "get", added.id).deleted_at !== null,
     "the trashed entry has deleted_at",
   );
 

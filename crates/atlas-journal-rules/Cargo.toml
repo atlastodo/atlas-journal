@@ -1,0 +1,19 @@
+[package]
+name = "atlas-journal-rules"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+description = "Atlas Journal's rules on Atlas core's engine: the entry fields and rules and the journal client, at parity with @atlastodo/journal-core."
+
+[dependencies]
+atlas-client = { workspace = true }
+atlas-core = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+jiff = { workspace = true }
+
+[dev-dependencies]
+uuid = { workspace = true }

@@ -1,0 +1,24 @@
+[package]
+name = "atlas-journal-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+homepage.workspace = true
+rust-version.workspace = true
+description = "The `atlas-journal` command line: Atlas Journal for scripts and n8n, end-to-end encrypted, one static binary."
+
+[[bin]]
+name = "atlas-journal"
+path = "src/main.rs"
+
+[dependencies]
+atlas-client = { workspace = true }
+atlas-journal-rules = { path = "../atlas-journal-rules" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+atlas-core = { workspace = true }
+uuid = { workspace = true }
+hex = "0.4"
