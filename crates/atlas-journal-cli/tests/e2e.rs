@@ -3,7 +3,7 @@
 //! runs these with `--run-ignored all`). An account signs up, enables Atlas Journal as the app does
 //! and makes a journal-only API token; the CLI writes entries with it, and a second session checks
 //! that the server only ever held ciphertext under the journal key. A todo token is refused with a
-//! JSON error.
+//! JSON error, as are a token that is not one and an unknown one.
 
 use std::process::Command;
 
@@ -278,4 +278,18 @@ fn journal_commands_need_a_token_with_journal() {
     );
 
     // A server that does not offer journal: the client test (FakeServer) covers it.
+}
+
+#[test]
+#[ignore = "end to end: scripts/e2e-cli.sh runs it against the server in ATLAS_E2E_SERVER"]
+fn the_cli_refuses_bad_tokens() {
+    let base = server();
+    // A token that is not one, and an unknown one.
+    let (code, _, err) = atlas_journal(&base, "nope", &["entries", "list"]);
+    assert_eq!(code, 1);
+    assert!(err.contains("invalid_token"), "{err}");
+    let other = format_api_token(&generate_api_token());
+    let (code, _, err) = atlas_journal(&base, &other, &["journal", "entries", "list"]);
+    assert_eq!(code, 1);
+    assert!(err.contains("\"status\":401"), "{err}");
 }
