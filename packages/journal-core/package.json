@@ -2,7 +2,7 @@
   "name": "@atlastodo/journal-core",
   "version": "0.1.0",
   "private": true,
-  "description": "Atlas Journal's platform-free core: the entry rules (at parity with the atlas CLI), the entry store over client-core, opening the journal app key and the sync engine",
+  "description": "Atlas Journal's platform-free core: the entry rules (at parity with the atlas-journal CLI), the entry store over client-core, opening the journal app key and the sync engine",
   "license": "AGPL-3.0-only",
   "repository": {
     "type": "git",
@@ -21,10 +21,10 @@
     "test:e2e": "vitest run --config vitest.e2e.config.ts"
   },
   "dependencies": {
-    "@atlastodo/client-core": "0.1.11"
+    "@atlastodo/client-core": "0.1.16"
   },
   "devDependencies": {
-    "@types/node": "^26.6.5",
+    "@types/node": "^26.6.6",
     "typescript": "~7.0.2",
     "vitest": "^5.0.5"
   }

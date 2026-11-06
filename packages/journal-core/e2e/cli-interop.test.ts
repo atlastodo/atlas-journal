@@ -1,5 +1,5 @@
 /**
- * Atlas Journal and the `atlas journal entries` CLI against a real server: an entry the CLI adds
+ * Atlas Journal and the `atlas-journal` CLI against a real server: an entry the CLI adds
  * shows up in the app and one the app writes shows up in the CLI, field for field, both ways, with
  * edits and the trash. The app side is this package's own code (sign-up, enabling the journal,
  * the journal API token, the sync engine), as the app runs it.
@@ -68,7 +68,7 @@ function plain(entry: JournalEntry & { locked?: boolean }): JournalEntry {
   return rest;
 }
 
-describe.skipIf(!URL_ || !CLI)("Atlas Journal and the atlas CLI", () => {
+describe.skipIf(!URL_ || !CLI)("Atlas Journal and the atlas-journal CLI", () => {
   const email = `journal-e2e-${randomUUID()}@example.com`;
   const password = "correct horse battery staple journal";
   let api: ApiClient;
@@ -95,7 +95,6 @@ describe.skipIf(!URL_ || !CLI)("Atlas Journal and the atlas CLI", () => {
   it("shows an entry the CLI adds in the app", async () => {
     const added = (await atlas(
       token,
-      "journal",
       "entries",
       "add",
       "--title",
@@ -130,43 +129,26 @@ describe.skipIf(!URL_ || !CLI)("Atlas Journal and the atlas CLI", () => {
     await app.syncNow();
     expect(app.pendingCount()).toBe(0);
 
-    const listed = (await atlas(token, "journal", "entries", "list")) as JournalEntry[];
+    const listed = (await atlas(token, "entries", "list")) as JournalEntry[];
     expect(listed.find((e) => e.id === written.id)).toEqual(plain(edited));
     expect(listed.some((e) => e.id === doomed.id)).toBe(false);
     // The CLI's order: newest date first.
     expect(listed.map((e) => e.date)).toEqual([...listed.map((e) => e.date)].sort().reverse());
-    const trashed = (await atlas(token, "journal", "entries", "get", doomed.id)) as JournalEntry;
+    const trashed = (await atlas(token, "entries", "get", doomed.id)) as JournalEntry;
     expect(trashed.deleted_at).toBe(app.entries.get(doomed.id)!.deleted_at);
   });
 
   it("brings the CLI's edits and deletes back to the app", async () => {
     const [mine] = app.entries.list({ search: "from the app" });
-    await atlas(
-      token,
-      "journal",
-      "entries",
-      "update",
-      mine!.id,
-      "--mood",
-      "none",
-      "--title",
-      "Renamed",
-    );
-    await atlas(token, "journal", "entries", "delete", mine!.id);
+    await atlas(token, "entries", "update", mine!.id, "--mood", "none", "--title", "Renamed");
+    await atlas(token, "entries", "delete", mine!.id);
     await app.syncNow();
     const got = app.entries.get(mine!.id)!;
     expect(got).toMatchObject({ title: "Renamed", mood: null });
     expect(got.deleted_at).not.toBeNull();
     app.entries.restore(mine!.id);
     await app.syncNow();
-    const back = (await atlas(
-      token,
-      "journal",
-      "entries",
-      "list",
-      "--search",
-      "renamed",
-    )) as JournalEntry[];
+    const back = (await atlas(token, "entries", "list", "--search", "renamed")) as JournalEntry[];
     expect(back.map((e) => e.id)).toEqual([mine!.id]);
   });
 
@@ -250,7 +232,7 @@ describe.skipIf(!URL_ || !CLI)("an Atlas Todo account opening Atlas Journal", ()
       keys: first.keys,
       name: "todo-first",
     });
-    const listed = (await atlas(token, "journal", "entries", "list")) as JournalEntry[];
+    const listed = (await atlas(token, "entries", "list")) as JournalEntry[];
     expect(listed.map((e) => e.title)).toEqual(["First journal entry"]);
     await engine.stop();
   });

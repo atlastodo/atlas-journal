@@ -1,4 +1,4 @@
-# Lint, typecheck and test for every push to dev and main and every PR, or on demand. A push or PR
+# Lint, typecheck and test for every push to dev and main and every PR, a release, or on demand. A push or PR
 # only runs the jobs whose files changed (see `changes`); the audit runs when dependencies change
 # and once a week.
 name: CI
@@ -8,6 +8,8 @@ on:
     branches: [main, dev]
   pull_request:
   workflow_dispatch:
+  # release.yml runs the whole suite before it builds a release.
+  workflow_call:
   schedule:
     - cron: "17 5 * * 1"
 
@@ -23,8 +25,6 @@ defaults:
     shell: bash
 
 env:
-  # Bun is pinned in lockstep with devenv (its devenv.lock nixpkgs) -- bump them together.
-  BUN_VERSION: "1.4.2"
   NODE_VERSION: "26"
 
 jobs:
@@ -38,6 +38,7 @@ jobs:
       pull-requests: read
     outputs:
       lint: ${{ steps.filter.outputs.lint }}
+      rust: ${{ steps.filter.outputs.rust }}
       core: ${{ steps.filter.outputs.core }}
       app: ${{ steps.filter.outputs.app }}
       deps: ${{ steps.filter.outputs.deps }}
@@ -51,7 +52,7 @@ jobs:
           SHA: ${{ github.sha }}
           PR: ${{ github.event.pull_request.number }}
         run: |
-          set_all() { for k in lint core app deps; do echo "$k=$1" >>"$GITHUB_OUTPUT"; done; }
+          set_all() { for k in lint rust core app deps; do echo "$k=$1" >>"$GITHUB_OUTPUT"; done; }
           case "$EVENT" in
             schedule)
               set_all false
@@ -72,13 +73,15 @@ jobs:
           esac
           # The compare API lists at most 300 files; past that, assume everything changed.
           if [ "$(grep -c . <<<"$files")" -ge 300 ]; then set_all true; exit 0; fi
-          ci='^\.github/workflows/ci\.yml$'
+          ci='^(\.github/workflows/ci\.yml|\.bun-version)$'
           shared="^(package\.json$|bun\.lock$|bunfig\.toml$)|$ci"
-          deps="^(bun\.lock|package\.json|apps/[^/]+/package\.json|packages/[^/]+/package\.json)$|$ci"
+          rust="^(crates/|Cargo\.(toml|lock)$|rust-toolchain\.toml$|deny\.toml$|test-vectors/)|$ci"
+          deps="^(bun\.lock|package\.json|apps/[^/]+/package\.json|packages/[^/]+/package\.json|Cargo\.(toml|lock)|crates/[^/]+/Cargo\.toml|deny\.toml)$|$ci"
           has() { if grep -qE "$1" <<<"$files"; then echo true; else echo false; fi; }
           {
             # Prettier checks Markdown, YAML and JSON too, so every change lints.
             echo "lint=$(has .)"
+            echo "rust=$(has "$rust")"
             echo "core=$(has "$shared|^packages/|^test-vectors/")"
             echo "app=$(has "$shared|^apps/journal/|^packages/")"
             echo "deps=$(has "$deps")"
@@ -100,7 +103,7 @@ jobs:
           package-manager-cache: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: ${{ env.BUN_VERSION }}
+          bun-version-file: .bun-version
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.bun/install/cache
@@ -113,6 +116,52 @@ jobs:
       - run: node scripts/third-party-licenses.mjs --check
       - run: bunx oxlint .
       - run: bunx prettier --check .
+
+  # The atlas-journal CLI and its rules (crates/), on core's atlas-client crate.
+  lint-rust:
+    name: Lint (Rust)
+    needs: changes
+    if: ${{ needs.changes.outputs.rust == 'true' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Rust (rust-toolchain.toml)
+        run: |
+          rustup toolchain install --no-self-update
+          # rust-cache keys on every installed toolchain: keep only ours, as core's CI does.
+          ours="$(rustup show active-toolchain | cut -d" " -f1)"
+          rustup toolchain list | cut -d" " -f1 | grep -vxF "$ours" | xargs -r -n1 rustup toolchain uninstall
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev' }}
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --workspace --all-targets --locked --no-deps -- -D warnings
+
+  # The rules against core's fake server and the CLI's golden runs (test-vectors/cli_golden.json);
+  # the end-to-end tests need a server and run in `e2e`.
+  test-rust:
+    name: Test (Rust)
+    needs: changes
+    if: ${{ needs.changes.outputs.rust == 'true' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Rust (rust-toolchain.toml)
+        run: |
+          rustup toolchain install --no-self-update
+          ours="$(rustup show active-toolchain | cut -d" " -f1)"
+          rustup toolchain list | cut -d" " -f1 | grep -vxF "$ours" | xargs -r -n1 rustup toolchain uninstall
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev' }}
+      - uses: taiki-e/install-action@68a389c788b2cd04016ce8c80ee23b80d2ab3d68 # v2.88.1
+        with:
+          tool: cargo-nextest@0.9.143
+      - run: cargo nextest run --workspace --locked
 
   test-core:
     name: Test (journal-core)
@@ -129,14 +178,14 @@ jobs:
           package-manager-cache: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: ${{ env.BUN_VERSION }}
+          bun-version-file: .bun-version
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.bun/install/cache
           key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
           restore-keys: bun-${{ runner.os }}-
       - run: bun install --frozen-lockfile
-      # The entry rules against the atlas CLI's golden runs, the store and the sync engine.
+      # The entry rules against the atlas-journal CLI's golden runs, the store and the sync engine.
       - working-directory: packages/journal-core
         run: bunx --bun vitest run
 
@@ -156,7 +205,7 @@ jobs:
           package-manager-cache: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: ${{ env.BUN_VERSION }}
+          bun-version-file: .bun-version
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.bun/install/cache
@@ -173,19 +222,16 @@ jobs:
           EXPO_NO_TELEMETRY: "1"
         run: bunx expo export --platform web --output-dir "$RUNNER_TEMP/web"
 
-  # The app's journal and the `atlas` CLI against a real server: the core release this app pins
-  # (its server image and its static CLI binary), with the web app served by that server and driven
-  # in Chrome. An entry either side writes must show up on the other (packages/journal-core/e2e,
+  # The app's journal and the atlas-journal CLI (built here) against a real server: the server
+  # image of the core release this app pins, with the web app served by that server and driven in
+  # Chrome. The CLI's own end-to-end tests run first; then an entry either side writes must show up
+  # on the other (crates/atlas-journal-cli/tests/e2e.rs, packages/journal-core/e2e,
   # scripts/e2e-web.mjs; locally `e2e:cli`).
   e2e:
     name: End to end (server + CLI)
     needs: changes
-    if: ${{ needs.changes.outputs.app == 'true' || needs.changes.outputs.core == 'true' }}
+    if: ${{ needs.changes.outputs.app == 'true' || needs.changes.outputs.core == 'true' || needs.changes.outputs.rust == 'true' }}
     runs-on: ubuntu-24.04
-    env:
-      # The core release whose packages, server and CLI this app is built against.
-      CORE_VERSION: "0.1.11"
-      ATLAS_SERVER_IMAGE: ghcr.io/atlastodo/atlas:0.1.11
     services:
       postgres:
         image: postgres:16-alpine
@@ -201,28 +247,41 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # The core release whose packages and server this app is built against: the exact
+      # @atlastodo/client-core version the manifests pin (moved by scripts/update-deps.sh).
+      - name: Read the core pin
+        run: |
+          core="$(git grep -hoE '"@atlastodo/client-core": "[0-9][^"]*"' -- '*package.json' | awk -F'"' 'NR == 1 { print $4 }')"
+          echo "CORE_VERSION=$core" >>"$GITHUB_ENV"
+          echo "ATLAS_SERVER_IMAGE=ghcr.io/atlastodo/atlas:$core" >>"$GITHUB_ENV"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ env.NODE_VERSION }}
           package-manager-cache: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: ${{ env.BUN_VERSION }}
+          bun-version-file: .bun-version
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.bun/install/cache
           key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
           restore-keys: bun-${{ runner.os }}-
       - run: bun install --frozen-lockfile
-      - name: Download the atlas CLI
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Install Rust (rust-toolchain.toml)
         run: |
-          cli="atlas-$CORE_VERSION-x86_64-unknown-linux-musl"
-          gh release download "v$CORE_VERSION" -R atlastodo/atlas -D "$RUNNER_TEMP/cli" -p "$cli" -p SHA256SUMS.txt
-          (cd "$RUNNER_TEMP/cli" && sha256sum --ignore-missing -c SHA256SUMS.txt)
-          chmod +x "$RUNNER_TEMP/cli/$cli"
-          echo "ATLAS_CLI=$RUNNER_TEMP/cli/$cli" >>"$GITHUB_ENV"
+          rustup toolchain install --no-self-update
+          ours="$(rustup show active-toolchain | cut -d" " -f1)"
+          rustup toolchain list | cut -d" " -f1 | grep -vxF "$ours" | xargs -r -n1 rustup toolchain uninstall
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          save-if: false
+      - uses: taiki-e/install-action@68a389c788b2cd04016ce8c80ee23b80d2ab3d68 # v2.88.1
+        with:
+          tool: cargo-nextest@0.9.143
+      - name: Build the atlas-journal CLI
+        run: |
+          cargo build --locked -p atlas-journal-cli
+          echo "ATLAS_CLI=$GITHUB_WORKSPACE/target/debug/atlas-journal" >>"$GITHUB_ENV"
       - name: Export the web app
         working-directory: apps/journal
         env:
@@ -241,6 +300,10 @@ jobs:
             "$ATLAS_SERVER_IMAGE"
           for _ in $(seq 1 60); do curl -sf http://127.0.0.1:8080/health && break; sleep 1; done
           curl -sf http://127.0.0.1:8080/discovery
+      - name: The CLI's end-to-end tests
+        env:
+          ATLAS_E2E_SERVER: http://127.0.0.1:8080
+        run: cargo nextest run --locked -p atlas-journal-cli --test e2e --run-ignored all
       - name: The journal and the CLI
         working-directory: packages/journal-core
         env:
@@ -261,6 +324,25 @@ jobs:
           if-no-files-found: ignore
           retention-days: 7
 
+  # cargo-deny over the CLI's crates (deny.toml): advisories, licences, bans and sources.
+  audit-rust:
+    name: Audit (Rust)
+    needs: changes
+    if: ${{ needs.changes.outputs.deps == 'true' }}
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Rust (rust-toolchain.toml)
+        run: rustup toolchain install --no-self-update
+      - uses: taiki-e/install-action@68a389c788b2cd04016ce8c80ee23b80d2ab3d68 # v2.88.1
+        with:
+          tool: cargo-deny@0.20.2
+          fallback: none
+      - run: cargo deny check
+
   # The audit surfaces advisories without blocking: they often sit in un-updatable transitive
   # deps. Fixable ones go in `overrides` or a dependency bump, never an ignore list.
   audit:
@@ -275,5 +357,5 @@ jobs:
           persist-credentials: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
-          bun-version: ${{ env.BUN_VERSION }}
+          bun-version-file: .bun-version
       - run: bun audit

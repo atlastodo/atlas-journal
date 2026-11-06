@@ -1,5 +1,5 @@
 /**
- * Finding entries: the filters of `atlas journal entries list` (from, to, tag, search) and the
+ * Finding entries: the filters of `atlas-journal entries list` (from, to, tag, search) and the
  * order it lists them in, plus the grouping by day the app's list shows.
  */
 

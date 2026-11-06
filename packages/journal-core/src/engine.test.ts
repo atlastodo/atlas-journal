@@ -17,6 +17,7 @@ interface WireOp {
   id: string;
   entity: string;
   entity_id: string;
+  scope?: string | null;
   field?: string;
   value?: unknown;
 }
@@ -81,13 +82,16 @@ describe("JournalEngine", () => {
     await a.syncNow();
     expect(a.pendingCount()).toBe(0);
 
-    // The server holds only ciphertext under the journal key ("dek" is its role, not todo's DEK).
-    const sets = server.log.filter((o) => o.entity === "journal.entry");
-    expect(sets.length).toBe(7);
-    for (const op of sets) {
-      expect(op.value).toMatchObject({ __enc: 2, kid: "dek" });
-      expect(JSON.stringify(op.value)).not.toContain("Harbour");
+    // The server holds only ciphertext under the journal key ("dek" is its role, not todo's DEK),
+    // as opaque journal.sealed ops: no kind, no field name, no scope (sync protocol 7).
+    expect(server.log).toHaveLength(7);
+    for (const op of server.log) {
+      expect(op.entity).toBe("journal.sealed");
+      expect(op.scope).toBeNull();
+      expect(op.field).toMatch(/^[0-9a-f]{32}$/);
+      expect(op.value).toMatchObject({ __enc: 3, kid: "dek" });
     }
+    expect(JSON.stringify(server.log)).not.toMatch(/Harbour|journal\.entry|"title"|"mood"/);
     // Every request named the journal as its scope.
     expect(server.headers.every((h) => h["x-atlas-sync-apps"] === "journal")).toBe(true);
 
@@ -115,7 +119,11 @@ describe("JournalEngine", () => {
     const made = a.entries.create({ title: "Private" });
     await a.syncNow();
     await other.syncNow();
-    expect(other.entries.get(made.id)).toMatchObject({ title: "", locked: true });
+    // Without the key nothing tells it the sealed values are an entry (protocol 7 hides the kind):
+    // they wait, locked, until a key opens them, and never show as an entry's content.
+    expect(other.entries.get(made.id)).toBeNull();
+    expect(other.entries.list()).toEqual([]);
+    expect(other.store.lockedCount()).toBeGreaterThan(0);
     await a.stop();
     await other.stop();
   });

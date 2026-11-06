@@ -1,5 +1,5 @@
 /**
- * Personal API tokens for Atlas Journal: what the `atlas journal entries …` CLI and automations
+ * Personal API tokens for Atlas Journal: what the `atlas-journal` CLI and automations
  * (n8n) sign in with (`docs/integrations.md` in the core repository, App-scoped tokens). A
  * journal token carries the journal app key and identity wrapped for the token
  * (`wrapAppKeysForApiToken`) and nothing of todo's; the server never sees the token's secret.
