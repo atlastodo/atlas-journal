@@ -243,7 +243,19 @@ fn the_cli_writes_journal_entries_with_a_journal_only_token() {
         .request("GET", "/sync/pull?since=0", None)
         .unwrap();
     let raw = pulled.to_string();
-    assert!(!raw.contains("Harbour") && !raw.contains("Fog") && !raw.contains("walks"));
+    // Whole phrases: a short word such as "Fog" turns up in kilobytes of base64 ciphertext by
+    // chance now and then.
+    for plain in [
+        "Harbour walk",
+        "Fog over the water.",
+        "Fog, then sun.",
+        "\"walks\"",
+    ] {
+        assert!(
+            !raw.contains(plain),
+            "the server holds {plain:?} in plaintext"
+        );
+    }
     let ops = pulled["operations"].as_array().unwrap();
     assert!(!ops.is_empty());
     for op in ops {

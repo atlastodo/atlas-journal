@@ -62,7 +62,14 @@ fn a_journal_only_token_writes_entries_only_its_key_opens() {
     assert!(!st.sync_apps.is_empty());
     assert!(st.sync_apps.iter().all(|a| a.as_deref() == Some("journal")));
     let raw = serde_json::to_string(&st.ops).unwrap();
-    assert!(!raw.contains("Harbour") && !raw.contains("Fog") && !raw.contains("walks"));
+    // Whole phrases: a short word such as "Fog" turns up in base64 ciphertext by chance now and
+    // then.
+    for plain in ["Harbour walk", "Fog over the water.", "\"walks\""] {
+        assert!(
+            !raw.contains(plain),
+            "the server holds {plain:?} in plaintext"
+        );
+    }
     // Each value is a personal-scope v3 envelope under the journal key, the kind inside it.
     let (journal_key, _) = server.app_keys["journal"];
     for (_, op) in &st.ops {
