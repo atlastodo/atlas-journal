@@ -2,7 +2,7 @@
   "name": "@atlastodo/journal-core",
   "version": "0.1.0",
   "private": true,
-  "description": "Atlas Journal's platform-free core: the entry rules (at parity with the atlas CLI), the entry store over client-core, opening the journal app key and the sync engine",
+  "description": "Atlas Journal's platform-free core: the entry rules (at parity with the atlas-journal CLI), the entry store over client-core, opening the journal app key and the sync engine",
   "license": "AGPL-3.0-only",
   "repository": {
     "type": "git",

@@ -1,9 +1,9 @@
 /**
  * Atlas Journal entries (`journal.entry`, `manifests/journal.json` in the core repository): what
- * an entry is and the rules for writing one. They are the rules of the `atlas journal entries`
- * CLI (`crates/atlas-client/src/journal.rs` in core), which this app must agree with, so an entry
- * either side writes reads the same on the other. `test-vectors/journal_cli_golden.json` (the
- * CLI's golden runs) pins them: `entry.golden.test.ts` replays it.
+ * an entry is and the rules for writing one. They are the rules of the `atlas-journal` CLI
+ * (`crates/atlas-journal-rules`), which this app must agree with, so an entry either side writes
+ * reads the same on the other. `test-vectors/cli_golden.json` (the CLI's golden runs) pins them:
+ * `entry.golden.test.ts` replays it.
  *
  * An entry's fields, as stored (every one end-to-end encrypted under the journal app key):
  * - `date`: the day the entry is about, `YYYY-MM-DD` (a calendar date, no zone).

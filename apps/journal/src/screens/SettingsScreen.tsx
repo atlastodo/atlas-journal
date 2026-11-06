@@ -79,7 +79,7 @@ export function SettingsScreen({ onBack, onTrash }: { onBack: () => void; onTras
 }
 
 /**
- * Journal-only API tokens for the `atlas journal entries` CLI and automations. A new token is
+ * Journal-only API tokens for the `atlas-journal` CLI and automations. A new token is
  * shown once; it carries the journal key wrapped for itself, and nothing of todo's.
  */
 function ApiTokens() {
@@ -151,7 +151,7 @@ function ApiTokens() {
             {created}
           </Text>
           <Text selectable style={[local.mono, { color: p.muted }]}>
-            ATLAS_URL={serverUrl} ATLAS_TOKEN=… atlas journal entries list
+            ATLAS_URL={serverUrl} ATLAS_TOKEN=… atlas-journal entries list
           </Text>
           <Button
             label="I have copied it"

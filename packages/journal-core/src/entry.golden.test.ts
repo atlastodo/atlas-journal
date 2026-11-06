@@ -1,6 +1,6 @@
 /**
- * The `atlas journal entries` golden runs (test-vectors/journal_cli_golden.json, copied from the
- * core repository's cli_golden.json) replayed through this package's entry rules: every command
+ * The `atlas-journal` CLI's golden runs (test-vectors/cli_golden.json, recorded by
+ * crates/atlas-journal-cli/tests/golden.rs) replayed through this package's entry rules: every command
  * the CLI ran succeeds or fails here the same way, with the same JSON. That is what lets an entry
  * written by either the app or the CLI read identically on the other.
  *
@@ -28,7 +28,7 @@ interface Scenario {
   steps: Step[];
 }
 const golden = JSON.parse(
-  readFileSync(new URL("../../../test-vectors/journal_cli_golden.json", import.meta.url), "utf8"),
+  readFileSync(new URL("../../../test-vectors/cli_golden.json", import.meta.url), "utf8"),
 ) as { now: number; scenarios: Scenario[] };
 
 const UUID = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/g;
@@ -115,7 +115,7 @@ function run(entries: JournalEntries, argv: string[]): unknown {
 
 const journalScenarios = golden.scenarios.filter((s) => s.token_apps?.includes("journal"));
 
-describe("the atlas CLI's journal golden runs", () => {
+describe("the atlas-journal CLI's golden runs", () => {
   it("has journal scenarios to replay", () => {
     expect(journalScenarios.length).toBeGreaterThanOrEqual(2);
   });
