@@ -155,6 +155,8 @@ for app in apps/*/; do
   fi
   rm -rf "$bak"
   with_release_age bash -c 'cd "$1" && CI=1 EXPO_OFFLINE=1 bunx expo install --fix' _ "$app"
+  # expo rewrites app.json (adding the config plugins the new modules need) in its own style.
+  bunx prettier --write "${app}app.json"
 done
 
 if [[ -f Cargo.lock ]]; then

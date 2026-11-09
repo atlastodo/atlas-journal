@@ -3,9 +3,7 @@
     "name": "Atlas Journal",
     "slug": "atlas-journal",
     "version": "0.1.0",
-    "platforms": [
-      "web"
-    ],
+    "platforms": ["web"],
     "scheme": "atlasjournal",
     "userInterfaceStyle": "automatic",
     "web": {
@@ -13,9 +11,6 @@
       "output": "single",
       "favicon": "./assets/favicon.png"
     },
-    "plugins": [
-      "expo-router",
-      "expo-status-bar"
-    ]
+    "plugins": ["expo-router", "expo-status-bar"]
   }
 }
