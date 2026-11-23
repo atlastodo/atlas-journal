@@ -95,9 +95,9 @@ in
     cargo fmt --all
     bunx prettier --write .
   '';
-  # Refresh everything Dependabot cannot update (the devenv lock, the Bun pins, the whole bun.lock
-  # and Cargo.lock, the Expo SDK packages, the core pin): scripts/update-deps.sh, which
-  # .github/workflows/deps-refresh.yml runs weekly.
+  # Refresh every dependency (the devenv lock, the Bun pins, the whole bun.lock
+  # and Cargo.lock, the Expo SDK packages, the core pin): scripts/update-deps.sh,
+  # run by hand (this demo app has no automated dependency PRs).
   scripts."deps:update".exec = ''bash "$DEVENV_ROOT/scripts/update-deps.sh" "$@"'';
 
   enterShell = ''
